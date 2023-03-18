@@ -116,7 +116,7 @@ docker push ggnanasekaran77/cloudflared
 ## Compute Instance
 * Note - Update Cloudflare Token in the below command
 ```shell
-export CLOUDFLARE_TUNNEL_TOKEN="eyJhIjoiZDZhYzA3ZmQ1YWUzMjk4NGZkNDYzYmM4NTI0YThlMzYiLCJ0IjoiZDBhZDZjMWUtOWE4Mi00ZGVlLWE4ZGItMDc5MWU4MzhkYWE1IiwicyI6IllUZzRZakJtWmpNdE9HUTNPQzAwTkROa0xXRTJNV1F0TjJGaU5XVTJZelF5TlRJMyJ9"
+export CLOUDFLARE_TUNNEL_TOKEN="eyJhIjoiZDZhYzA3ZmQ1YWUzMjk4NGZkNDYzYmM4NTI0YThlMzYiLCJ0IjoiN2NmOWUwOWMtZWZlNC00Y2U0LTk5YjYtN2JmNDMxYjBkMDZkIiwicyI6IlpqWmpZVGN3WTJJdE56aGtaaTAwTTJNMkxXRTNNVGt0TURZNFkyRmpaRGxpWldNNSJ9"
 
 gcloud compute instances create ${INSTANCE_NAME} --project=${PROJECT_ID} --zone=${ZONE} --machine-type=c3-highcpu-4 --network-interface=network-tier=PREMIUM,nic-type=GVNIC,subnet=${SUBNET},no-address --metadata=startup-script=sudo\ apt\ update$'\n'sudo\ apt\ install\ apt-transport-https\ ca-certificates\ curl\ gnupg2\ software-properties-common\ -y$'\n'curl\ -fsSL\ https://download.docker.com/linux/debian/gpg\ \|\ sudo\ apt-key\ add\ -$'\n'sudo\ add-apt-repository\ \"deb\ \[arch=amd64\]\ https://download.docker.com/linux/debian\ \$\(lsb_release\ -cs\)\ stable\"$'\n'sudo\ apt\ update$'\n'apt-cache\ policy\ docker-ce$'\n'sudo\ apt\ install\ docker-ce\ -y$'\n'docker\ run\ --net=host\ -d\ ggnanasekaran77/cloudflared\ tunnel\ --config\ /tmp/config.yaml\ --no-autoupdate\ run\ --token\ ${CLOUDFLARE_TUNNEL_TOKEN}$'\n'docker\ run\ -p\ 80:80\ -d\ nginx\  --maintenance-policy=MIGRATE --provisioning-model=STANDARD --service-account=728919999622-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/cloud-platform --create-disk=auto-delete=yes,boot=yes,device-name=${INSTANCE_NAME},image=projects/debian-cloud/global/images/debian-11-bullseye-v20230306,mode=rw,size=10,type=projects/${PROJECT_ID}/zones/${ZONE}/diskTypes/pd-balanced --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring --labels=ec-src=vm_add-gcloud --reservation-affinity=any
 
@@ -130,6 +130,8 @@ warp-cli teams-enroll gnanamail
 gcloud dns --project=${PROJECT_ID} managed-zones create gnanam-online --description="" --dns-name="gnanam.online." --visibility="private" --networks="${NETWORK}"
 
 gcloud dns --project=${PROJECT_ID} record-sets create gnanam.online. --zone="gnanam-online" --type="A" --ttl="300" --rrdatas="172.19.0.3"
+
+gcloud dns --project=${PROJECT_ID} record-sets create testvm.gnanam.online. --zone="gnanam-online" --type="A" --ttl="300" --rrdatas="172.19.0.3"
 ```
 
 ## Clean UP
@@ -161,6 +163,8 @@ gcloud compute networks subnets delete internal-lb-proxy --project=${PROJECT_ID}
 gcloud compute networks delete ${NETWORK} --project=${PROJECT_ID} --quiet
 
 gcloud dns --project=${PROJECT_ID} record-sets delete gnanam.online. --zone="gnanam-online" --type="A" --quiet
+
+gcloud dns --project=${PROJECT_ID} record-sets delete testvm.gnanam.online. --zone="gnanam-online" --type="A" --quiet
 
 gcloud dns --project=${PROJECT_ID} managed-zones delete gnanam-online --quiet
 ```
