@@ -35,17 +35,24 @@ export IP_RANGE="172.19.0.0/20"
 ## Network Setup
 ```shell
 gcloud config set project ${PROJECT_ID}
+
 gcloud compute networks create ${NETWORK} --project=${PROJECT_ID} --subnet-mode=custom --mtu=1460 --bgp-routing-mode=regional
+
 gcloud compute networks subnets create ${SUBNET} --project=${PROJECT_ID} --range=${IP_RANGE} --stack-type=IPV4_ONLY --network=${NETWORK} --region=${REGION} --enable-private-ip-google-access
+
 gcloud compute networks subnets create internal-lb-proxy --purpose=REGIONAL_MANAGED_PROXY --role=ACTIVE --region=${REGION} --network=${NETWORK}  --range="172.21.0.0/20"
+
 gcloud compute firewall-rules create ${NETWORK}-allow-icmp --network=${NETWORK} --allow tcp,udp,icmp --source-ranges=${IP_RANGE}
+
 gcloud compute firewall-rules create ${NETWORK}-allow-ssh --network=${NETWORK} --allow tcp:22,icmp
+
 gcloud compute firewall-rules create ${NETWORK}-allow-80 --direction=INGRESS --priority=1000 --network=${NETWORK} --action=ALLOW --rules=tcp:80
 ```
 
 ## Create Nat Gateway
 ```shell
 gcloud compute routers create internet-router --network=${NETWORK} --region=${REGION} --asn=65001 --advertisement-mode=CUSTOM
+
 gcloud compute routers nats create internet-nat-gateway --router=internet-router --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips --region=${REGION}
 ```
 
@@ -62,6 +69,7 @@ gcloud compute ssh --zone="${ZONE}" ${INSTANCE_NAME}  --tunnel-through-iap --pro
 ## Create Instance Group
 ```shell
 gcloud compute instance-groups unmanaged create instance-group-1 --project=${PROJECT_ID} --zone=${ZONE}
+
 gcloud compute instance-groups unmanaged add-instances instance-group-1 --project=${PROJECT_ID} --zone=${ZONE} --instances=${INSTANCE_NAME}
 ```
 
@@ -99,7 +107,9 @@ warp-routing:
 ## Building Docker Image
 ```yaml
 docker login
+
 docker build -t ggnanasekaran77/cloudflared .
+
 docker push ggnanasekaran77/cloudflared
 ```
 
@@ -107,33 +117,51 @@ docker push ggnanasekaran77/cloudflared
 * Note - Update Cloudflare Token in the below command
 ```shell
 export CLOUDFLARE_TUNNEL_TOKEN="eyJhIjoiZDZhYzA3ZmQ1YWUzMjk4NGZkNDYzYmM4NTI0YThlMzYiLCJ0IjoiZDBhZDZjMWUtOWE4Mi00ZGVlLWE4ZGItMDc5MWU4MzhkYWE1IiwicyI6IllUZzRZakJtWmpNdE9HUTNPQzAwTkROa0xXRTJNV1F0TjJGaU5XVTJZelF5TlRJMyJ9"
+
 gcloud compute instances create ${INSTANCE_NAME} --project=${PROJECT_ID} --zone=${ZONE} --machine-type=c3-highcpu-4 --network-interface=network-tier=PREMIUM,nic-type=GVNIC,subnet=${SUBNET},no-address --metadata=startup-script=sudo\ apt\ update$'\n'sudo\ apt\ install\ apt-transport-https\ ca-certificates\ curl\ gnupg2\ software-properties-common\ -y$'\n'curl\ -fsSL\ https://download.docker.com/linux/debian/gpg\ \|\ sudo\ apt-key\ add\ -$'\n'sudo\ add-apt-repository\ \"deb\ \[arch=amd64\]\ https://download.docker.com/linux/debian\ \$\(lsb_release\ -cs\)\ stable\"$'\n'sudo\ apt\ update$'\n'apt-cache\ policy\ docker-ce$'\n'sudo\ apt\ install\ docker-ce\ -y$'\n'docker\ run\ --net=host\ -d\ ggnanasekaran77/cloudflared\ tunnel\ --config\ /tmp/config.yaml\ --no-autoupdate\ run\ --token\ ${CLOUDFLARE_TUNNEL_TOKEN}$'\n'docker\ run\ -p\ 80:80\ -d\ nginx\  --maintenance-policy=MIGRATE --provisioning-model=STANDARD --service-account=728919999622-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/cloud-platform --create-disk=auto-delete=yes,boot=yes,device-name=${INSTANCE_NAME},image=projects/debian-cloud/global/images/debian-11-bullseye-v20230306,mode=rw,size=10,type=projects/${PROJECT_ID}/zones/${ZONE}/diskTypes/pd-balanced --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring --labels=ec-src=vm_add-gcloud --reservation-affinity=any
+
 gcloud compute instance-groups unmanaged add-instances instance-group-1 --project=${PROJECT_ID} --zone=${ZONE} --instances=${INSTANCE_NAME}
+
 warp-cli teams-enroll gnanamail
 ```
 
 ## DNS Setup
 ```shell
 gcloud dns --project=${PROJECT_ID} managed-zones create gnanam-online --description="" --dns-name="gnanam.online." --visibility="private" --networks="${NETWORK}"
+
 gcloud dns --project=${PROJECT_ID} record-sets create gnanam.online. --zone="gnanam-online" --type="A" --ttl="300" --rrdatas="172.19.0.3"
 ```
 
 ## Clean UP
 ```shell
 gcloud compute forwarding-rules delete internal-lb-1 --region=${REGION} --quiet
+
 gcloud compute backend-services delete internal-backend-service --region=${REGION} --quiet
+
 gcloud compute health-checks delete ilb-health --quiet
+
 gcloud compute instances delete ${INSTANCE_NAME} --project=${PROJECT_ID} --zone=${ZONE} --quiet
+
 gcloud compute instance-groups unmanaged delete instance-group-1 --project=${PROJECT_ID} --zone=${ZONE} --quiet
+
 gcloud compute routers nats delete internet-nat-gateway --region=${REGION} --router=internet-router --quiet
+
 gcloud compute routers delete internet-router --region=${REGION} --quiet
+
 gcloud compute firewall-rules delete ${NETWORK}-allow-80 --quiet
+
 gcloud compute firewall-rules delete ${NETWORK}-allow-ssh --quiet
+
 gcloud compute firewall-rules delete ${NETWORK}-allow-icmp --quiet
+
 gcloud compute networks subnets delete ${SUBNET} --project=${PROJECT_ID} --region=${REGION} --quiet
+
 gcloud compute networks subnets delete internal-lb-proxy --project=${PROJECT_ID} --region=${REGION} --quiet
+
 gcloud compute networks delete ${NETWORK} --project=${PROJECT_ID} --quiet
+
 gcloud dns --project=${PROJECT_ID} record-sets delete gnanam.online. --zone="gnanam-online" --type="A" --quiet
+
 gcloud dns --project=${PROJECT_ID} managed-zones delete gnanam-online --quiet
 ```
 
